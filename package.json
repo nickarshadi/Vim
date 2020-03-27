@@ -975,6 +975,9 @@
     "ts-loader": "6.2.2",
     "tslint": "6.1.0",
     "typescript": "3.8.3",
-    "vscode": "1.1.36"
+    "vscode": "1.1.36",
+    "webpack": "^4.42.1",
+    "webpack-cli": "^3.3.11",
+    "webpack-stream": "^5.2.1"
   }
 }
