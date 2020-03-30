@@ -320,7 +320,7 @@ export class ModeHandler implements vscode.Disposable {
       if (handled) {
         this.vimState.recordedState.resetCommandList();
       } else {
-        this.vimState = await this.handleKeyEventHelper(key, this.vimState);
+        await this.handleKeyEventHelper(key, this.vimState);
       }
     } catch (e) {
       if (e instanceof VimError) {
@@ -344,10 +344,10 @@ export class ModeHandler implements vscode.Disposable {
     this._logger.debug(`handleKeyEvent('${printableKey}') took ${Number(new Date()) - now}ms`);
   }
 
-  private async handleKeyEventHelper(key: string, vimState: VimState): Promise<VimState> {
+  private async handleKeyEventHelper(key: string, vimState: VimState): Promise<void> {
     if (vscode.window.activeTextEditor !== this.vimState.editor) {
       this._logger.warn('Current window is not active');
-      return this.vimState;
+      return;
     }
 
     // Catch any text change not triggered by us (example: tab completion).
@@ -365,9 +365,9 @@ export class ModeHandler implements vscode.Disposable {
           vimState.recordedState = new RecordedState();
         }
 
-        return vimState;
+        return;
       case KeypressState.WaitingOnKeys:
-        return vimState;
+        return;
     }
 
     let action = result as BaseAction;
@@ -423,7 +423,7 @@ export class ModeHandler implements vscode.Disposable {
       vimState.recordedMacro.actionsRun.push(actionToRecord);
     }
 
-    vimState = await this.runAction(vimState, recordedState, action);
+    await this.runAction(vimState, recordedState, action);
 
     if (vimState.currentMode === Mode.Insert) {
       recordedState.isInsertion = true;
@@ -442,15 +442,13 @@ export class ModeHandler implements vscode.Disposable {
     if (!this._remappers.isPotentialRemap && recordedState.isInsertion) {
       vimState.recordedState.resetCommandList();
     }
-
-    return vimState;
   }
 
   private async runAction(
     vimState: VimState,
     recordedState: RecordedState,
     action: BaseAction
-  ): Promise<VimState> {
+  ): Promise<void> {
     let ranRepeatableAction = false;
     let ranAction = false;
 
@@ -485,9 +483,9 @@ export class ModeHandler implements vscode.Disposable {
     }
 
     if (action instanceof BaseCommand) {
-      vimState = await action.execCount(vimState.cursorStopPosition, vimState);
+      await action.execCount(vimState.cursorStopPosition, vimState);
 
-      vimState = await this.executeCommand(vimState);
+      await this.executeCommand(vimState);
 
       if (action.isCompleteAction) {
         ranAction = true;
@@ -499,7 +497,7 @@ export class ModeHandler implements vscode.Disposable {
     }
 
     if (action instanceof DocumentContentChangeAction) {
-      vimState = await action.exec(vimState.cursorStopPosition, vimState);
+      await action.exec(vimState.cursorStopPosition, vimState);
     }
 
     // Update mode (note the ordering allows you to go into search mode,
@@ -528,7 +526,7 @@ export class ModeHandler implements vscode.Disposable {
 
     if (recordedState.operatorReadyToExecute(vimState.currentMode)) {
       if (vimState.recordedState.operator) {
-        vimState = await this.executeOperator(vimState);
+        await this.executeOperator(vimState);
         vimState.recordedState.hasRunOperator = true;
         ranRepeatableAction = vimState.recordedState.operator!.canBeRepeatedWithDot;
         ranAction = true;
@@ -670,8 +668,6 @@ export class ModeHandler implements vscode.Disposable {
         end: this.vimState.cursorStopPosition,
       };
     }
-
-    return vimState;
   }
 
   private async executeMovement(
@@ -743,7 +739,7 @@ export class ModeHandler implements vscode.Disposable {
     return { vimState, recordedState };
   }
 
-  private async executeOperator(vimState: VimState): Promise<VimState> {
+  private async executeOperator(vimState: VimState): Promise<void> {
     let recordedState = vimState.recordedState;
     const operator = recordedState.operator!;
 
@@ -778,9 +774,9 @@ export class ModeHandler implements vscode.Disposable {
         recordedState.operators.reverse()[0].constructor ===
           recordedState.operators.reverse()[1].constructor
       ) {
-        vimState = await operator.runRepeat(vimState, start, recordedState.count);
+        await operator.runRepeat(vimState, start, recordedState.count);
       } else {
-        vimState = await operator.run(vimState, start, stop);
+        await operator.run(vimState, start, stop);
       }
 
       for (const transformation of vimState.recordedState.transformations) {
@@ -795,7 +791,7 @@ export class ModeHandler implements vscode.Disposable {
     }
 
     if (vimState.recordedState.transformations.length > 0) {
-      vimState = await this.executeCommand(vimState);
+      await this.executeCommand(vimState);
     } else {
       // Keep track of all cursors (in the case of multi-cursor).
       vimState.cursors = resultingCursors;
@@ -803,15 +799,13 @@ export class ModeHandler implements vscode.Disposable {
         (cursor) => new vscode.Selection(cursor.start, cursor.stop)
       );
     }
-
-    return vimState;
   }
 
-  private async executeCommand(vimState: VimState): Promise<VimState> {
+  private async executeCommand(vimState: VimState): Promise<void> {
     const transformations = vimState.recordedState.transformations;
 
     if (transformations.length === 0) {
-      return vimState;
+      return;
     }
 
     const textTransformations: TextTransformations[] = transformations.filter((x) =>
@@ -954,7 +948,7 @@ export class ModeHandler implements vscode.Disposable {
 
         case 'dot':
           if (!globalState.previousFullAction) {
-            return vimState; // TODO(bell)
+            return; // TODO(bell)
           }
 
           await this.rerunRecordedState(vimState, globalState.previousFullAction.clone());
@@ -969,7 +963,7 @@ export class ModeHandler implements vscode.Disposable {
           if (transformation.register === ':') {
             await commandLine.Run(recordedMacro.commandString, vimState);
           } else if (transformation.replay === 'contentChange') {
-            vimState = await this.runMacro(vimState, recordedMacro);
+            await this.runMacro(vimState, recordedMacro);
           } else {
             let keyStrokes: string[] = [];
             for (let action of recordedMacro.actionsRun) {
@@ -986,7 +980,7 @@ export class ModeHandler implements vscode.Disposable {
             // movement in last invoked macro failed then we should stop all following repeating macros.
             // Besides, we should reset `lastMovementFailed`.
             vimState.lastMovementFailed = false;
-            return vimState;
+            return;
           }
           break;
 
@@ -1089,13 +1083,12 @@ export class ModeHandler implements vscode.Disposable {
     }
 
     vimState.recordedState.transformations = [];
-    return vimState;
   }
 
   private async rerunRecordedState(
     vimState: VimState,
     recordedState: RecordedState
-  ): Promise<VimState> {
+  ): Promise<void> {
     const actions = [...recordedState.actionsRun];
     const { hasRunSurround, surroundKeys } = recordedState;
 
@@ -1118,10 +1111,10 @@ export class ModeHandler implements vscode.Disposable {
     } else {
       for (const [i, action] of actions.entries()) {
         recordedState.actionsRun = actions.slice(0, i + 1);
-        vimState = await this.runAction(vimState, recordedState, action);
+        await this.runAction(vimState, recordedState, action);
 
         if (vimState.lastMovementFailed) {
-          return vimState;
+          return;
         }
 
         await this.updateView(vimState);
@@ -1129,11 +1122,9 @@ export class ModeHandler implements vscode.Disposable {
       recordedState.actionsRun = actions;
     }
     vimState.isRunningDotCommand = false;
-
-    return vimState;
   }
 
-  private async runMacro(vimState: VimState, recordedMacro: RecordedState): Promise<VimState> {
+  private async runMacro(vimState: VimState, recordedMacro: RecordedState): Promise<void> {
     let recordedState = new RecordedState();
     vimState.recordedState = recordedState;
     vimState.isRunningDotCommand = true;
@@ -1144,7 +1135,7 @@ export class ModeHandler implements vscode.Disposable {
       recordedState.actionsRun.push(action);
       vimState.keyHistory = vimState.keyHistory.concat(action.keysPressed);
 
-      vimState = await this.runAction(vimState, recordedState, action);
+      await this.runAction(vimState, recordedState, action);
 
       // We just finished a full action; let's clear out our current state.
       if (vimState.recordedState.actionsRun.length === 0) {
@@ -1165,7 +1156,6 @@ export class ModeHandler implements vscode.Disposable {
 
     vimState.isRunningDotCommand = false;
     vimState.cursorsInitialState = vimState.cursors;
-    return vimState;
   }
 
   public async updateView(

@@ -144,25 +144,24 @@ export class JumpTracker {
   /**
    * Jump forward, possibly resulting in a file jump
    */
-  public async jumpForward(position: Position, vimState?: VimState): Promise<VimState> {
-    return this.jumpThroughHistory(this.recordJumpForward.bind(this), position, vimState);
+  public async jumpForward(position: Position, vimState?: VimState): Promise<void> {
+    await this.jumpThroughHistory(this.recordJumpForward.bind(this), position, vimState);
   }
 
   /**
    * Jump back, possibly resulting in a file jump
    */
-  public async jumpBack(position: Position, vimState?: VimState): Promise<VimState> {
-    return this.jumpThroughHistory(this.recordJumpBack.bind(this), position, vimState);
+  public async jumpBack(position: Position, vimState?: VimState): Promise<void> {
+    await this.jumpThroughHistory(this.recordJumpBack.bind(this), position, vimState);
   }
 
   private async jumpThroughHistory(
     getJump: (Jump) => Jump,
     position: Position,
     vimState?: VimState
-  ): Promise<VimState> {
+  ): Promise<void> {
     if (!vimState) {
-      // Disposed? Don't attempt anything, but return whatever falsy value was given.
-      return vimState!;
+      return;
     }
 
     let jump = new Jump({
@@ -177,7 +176,7 @@ export class JumpTracker {
     }
 
     if (!jump) {
-      return vimState;
+      return;
     }
 
     const jumpedFiles = jump.fileName !== vimState.editor.document.fileName;
@@ -188,8 +187,6 @@ export class JumpTracker {
     } else {
       vimState.cursorStopPosition = jump.position;
     }
-
-    return vimState;
   }
 
   /**

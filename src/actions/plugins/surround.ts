@@ -60,9 +60,9 @@ class CommandSurroundAddTarget extends BaseCommand {
     return false;
   }
 
-  public async exec(position: Position, vimState: VimState): Promise<VimState> {
+  public async exec(position: Position, vimState: VimState): Promise<void> {
     if (!vimState.surround) {
-      return vimState;
+      return;
     }
 
     vimState.surround.target = this.keysPressed[this.keysPressed.length - 1];
@@ -87,8 +87,6 @@ class CommandSurroundAddTarget extends BaseCommand {
     if (await CommandSurroundAddToReplacement.TryToExecuteSurround(vimState, position)) {
       this.isCompleteAction = true;
     }
-
-    return vimState;
   }
 
   public doesActionApply(vimState: VimState, keysPressed: string[]): boolean {
@@ -154,10 +152,10 @@ class CommandSurroundModeStart extends BaseCommand {
     return false;
   }
 
-  public async exec(position: Position, vimState: VimState): Promise<VimState> {
+  public async exec(position: Position, vimState: VimState): Promise<void> {
     // Only execute the action if the configuration is set
     if (!configuration.surround) {
-      return vimState;
+      return;
     }
 
     const operator = vimState.recordedState.operator;
@@ -172,7 +170,7 @@ class CommandSurroundModeStart extends BaseCommand {
     }
 
     if (!operatorString) {
-      return vimState;
+      return;
     }
 
     // Start to record the keys to store for playback of surround using dot
@@ -192,8 +190,6 @@ class CommandSurroundModeStart extends BaseCommand {
     if (operatorString !== 'yank') {
       await vimState.setCurrentMode(Mode.SurroundInputMode);
     }
-
-    return vimState;
   }
 
   public doesActionApply(vimState: VimState, keysPressed: string[]): boolean {
@@ -218,10 +214,10 @@ class CommandSurroundModeStartVisual extends BaseCommand {
     return false;
   }
 
-  public async exec(position: Position, vimState: VimState): Promise<VimState> {
+  public async exec(position: Position, vimState: VimState): Promise<void> {
     // Only execute the action if the configuration is set
     if (!configuration.surround) {
-      return vimState;
+      return;
     }
 
     // Start to record the keys to store for playback of surround using dot
@@ -263,8 +259,6 @@ class CommandSurroundModeStartVisual extends BaseCommand {
 
     await vimState.setCurrentMode(Mode.SurroundInputMode);
     vimState.cursorStopPosition = vimState.cursorStartPosition;
-
-    return vimState;
   }
 }
 
@@ -273,9 +267,9 @@ export class CommandSurroundAddToReplacement extends BaseCommand {
   modes = [Mode.SurroundInputMode];
   keys = ['<any>'];
 
-  public async exec(position: Position, vimState: VimState): Promise<VimState> {
+  public async exec(position: Position, vimState: VimState): Promise<void> {
     if (!vimState.surround) {
-      return vimState;
+      return;
     }
 
     // Backspace modifies the tag entry
@@ -292,7 +286,7 @@ export class CommandSurroundAddToReplacement extends BaseCommand {
           );
         }
 
-        return vimState;
+        return;
       }
     }
 
@@ -325,8 +319,6 @@ export class CommandSurroundAddToReplacement extends BaseCommand {
     if (await CommandSurroundAddToReplacement.TryToExecuteSurround(vimState, position)) {
       this.isCompleteAction = true;
     }
-
-    return vimState;
   }
 
   public static async Finish(vimState: VimState): Promise<boolean> {
