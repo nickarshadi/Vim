@@ -1,7 +1,7 @@
 import { Scanner } from './scanner';
 import { Token, TokenType } from './token';
 
-// Describes a function that can lex part of a Vim command line.
+// Describe a function that can lex part of a Vim command line.
 interface ILexFunction {
   (state: Scanner, tokens: Token[]): ILexFunction | null;
 }
